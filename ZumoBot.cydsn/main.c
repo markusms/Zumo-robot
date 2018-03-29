@@ -62,8 +62,10 @@ int main()
     
     ADC_Battery_Start();        
 
+    int time = 0, timesCheckedBattery = 1, ledOn = 0;
     int16 adcresult =0;
     float volts = 0.0;
+    
 
     printf("\nBoot\n");
 
@@ -76,19 +78,35 @@ int main()
 
     for(;;)
     {
-        
-        ADC_Battery_StartConvert();
-        if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
-            adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
-            // convert value to Volts
-            // you need to implement the conversion
-            
-            // Print both ADC results and converted value
-            volts = (float) adcresult/4095*5*1.5;
-            printf("%d %f V\r\n",adcresult, volts);
+        time = GetTicks()/1000; //seconds
+        if (time > (10*timesCheckedBattery))
+        {
+            ADC_Battery_StartConvert();
+            if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
+                adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
+                // convert value to Volts
+                // you need to implement the conversion
+                
+                // Print both ADC results and converted value
+                volts = (float) adcresult/4095*5*1.5;
+                printf("%d %f V\r\n",adcresult, volts);
+            }
+            CyDelay(500);
+            timesCheckedBattery++;
         }
-        CyDelay(500);
-        
+        if (volts < 4)
+        {
+            if (ledOn == 0)
+            {
+                BatteryLed_Write(1);
+                ledOn = 1;
+            }
+            else
+            {
+                BatteryLed_Write(0);
+                ledOn = 0;
+            }
+        }
     }
  }   
 #endif
