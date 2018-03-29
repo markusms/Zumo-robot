@@ -79,7 +79,7 @@ int main()
     for(;;)
     {
         time = GetTicks()/1000; //seconds
-        if (time > (10*timesCheckedBattery))
+        if (time > (5*timesCheckedBattery))
         {
             ADC_Battery_StartConvert();
             if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
@@ -91,7 +91,7 @@ int main()
                 volts = (float) adcresult/4095*5*1.5;
                 printf("%d %f V\r\n",adcresult, volts);
             }
-            CyDelay(500);
+           
             timesCheckedBattery++;
         }
         if (volts < 4)
@@ -106,6 +106,7 @@ int main()
                 BatteryLed_Write(0);
                 ledOn = 0;
             }
+            CyDelay(200);
         }
     }
  }   
