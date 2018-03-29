@@ -108,6 +108,11 @@ int main()
             }
             CyDelay(200);
         }
+        if (volts >= 4 && ledOn == 1)
+        {
+            BatteryLed_Write(0);
+            ledOn = 0;
+        }
     }
  }   
 #endif
