@@ -146,18 +146,31 @@ int main()
         {
             motor_turn(1,50,100);
         }*/
-         if (ref.l2 > 15000) //left mid side sees black -> (small) turn right
+        /*if (ref.l2 > 15000) //left mid side sees black -> (small) turn right
         {
-            motor_turn(30,15,10);
+            motor_turn(30,60,10);
         }
         else if (ref.r2 > 15000) //right mid side sees black -> (small) turn left
         {
-            motor_turn(15,30,10);
+            motor_turn(60,30,10);
         }
         else
         {
             motor_forward(20,10);
-        }
+        }*/
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(-240); 
+        MotorDirRight_Write(1);     // set RightMotor backward mode
+        PWM_WriteCompare2(0); 
+        printf("delay\n");
+        CyDelay(3000);
+        PWM_WriteCompare1(0); 
+        PWM_WriteCompare2(0); 
+        printf("delay2\n");
+        CyDelay(3000);
+        printf("delay ended\n");
+        
     }
     motor_stop();  //stop the motor
  }   
