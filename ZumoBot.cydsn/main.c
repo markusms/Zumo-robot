@@ -160,16 +160,54 @@ int main()
         }*/
         
         MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(-240); 
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(0);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(3100);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
         MotorDirRight_Write(1);     // set RightMotor backward mode
-        PWM_WriteCompare2(0); 
-        printf("delay\n");
-        CyDelay(3000);
-        PWM_WriteCompare1(0); 
-        PWM_WriteCompare2(0); 
-        printf("delay2\n");
-        CyDelay(3000);
-        printf("delay ended\n");
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(455);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(0);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(2700);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(1);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(470);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(0);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(2700);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(1);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(435);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(0);     // set RightMotor backward mode
+        PWM_WriteCompare2(57);       //right motor speed
+        CyDelay(3900);
+        
+        MotorDirLeft_Write(0);      // set LeftMotor forward mode
+        PWM_WriteCompare1(120);    //left motor speed
+        MotorDirRight_Write(0);     // set RightMotor backward mode
+        PWM_WriteCompare2(120);       //right motor speed
+        CyDelay(220);
+        
+        motor_stop();
         
     }
     motor_stop();  //stop the motor
