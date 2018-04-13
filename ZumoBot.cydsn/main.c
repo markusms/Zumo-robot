@@ -69,9 +69,10 @@ int main()
     int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
     int counter = 0; //counter for printing reflectance sensor variables
     int driveDelay = 8, maxSpeed = 255;
-    int timesSeenAllBlack = 0;
+    int timesSeenAllBlack = 1;
+    int lastSeenAllBlack = 0;
     int16 adcresult =0;
-    float volts = 0.0;
+    float volts = 5.0;
   
     reflectance_start();
     reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
@@ -85,7 +86,7 @@ int main()
     // SW1_Read() returns zero when button is pressed
     // SW1_Read() returns one when button is not pressed
     
-    motor_start(); //start the motor
+    //motor_start(); //start the motor
     PWM_WriteCompare1(0); //set left motor speed to 0
     PWM_WriteCompare2(0); //set right motor speed to 0
     
@@ -93,7 +94,7 @@ int main()
     {
         //Battery + LED
         time = GetTicks()/1000; //seconds
-        /*if (time > (5*timesCheckedBattery)) //go here every 10 seconds
+        if (time > (10*timesCheckedBattery)) //go here every 10 seconds
         {
             ADC_Battery_StartConvert();
             if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
@@ -119,13 +120,13 @@ int main()
                 BatteryLed_Write(0);
                 ledOn = 0;
             }
-            CyDelay(200);
+            CyDelay(10);
         }
         if (volts >= 4 && ledOn == 1) //if battery is back to over 4 and led was left on, turn it off
         {
             BatteryLed_Write(0);
             ledOn = 0;
-        }*/
+        }
         
         //Line reading with motor control
         // read raw sensor values
@@ -175,17 +176,24 @@ int main()
         000011
         000001
         */
-        if (timesSeenAllBlack == 3)
+        if (timesSeenAllBlack == 4)
         {
             break; //go outside of the infinte for loop (to motor_stop();)
         }
-        if(dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
+        if (lastSeenAllBlack == 0)
         {
-            PWM_WriteCompare1(0); //set left motor to go forwards
-            PWM_WriteCompare2(0); //set right motor to go forwards
-            CyDelay(2000); //wait for 2 seconds
-            motor_forward(255,200);
-            timesSeenAllBlack++;
+            if(dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
+            {
+                if(timesSeenAllBlack == 1)
+                {
+                    PWM_WriteCompare1(0); //set left motor to go forwards
+                    PWM_WriteCompare2(0); //set right motor to go forwards
+                    CyDelay(5000); //wait for 2 seconds
+                    motor_forward(255,200);
+                }
+                timesSeenAllBlack++;
+            }
+            lastSeenAllBlack = 1;
         }
         if(dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -197,6 +205,7 @@ int main()
             PWM_WriteCompare2(maxSpeed-20); //right motor speed to maxSpeed-20 (pwm 0-255)
             CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
             lastSeenDirection = 0;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1)
         {
@@ -208,6 +217,7 @@ int main()
             PWM_WriteCompare2(20);
             CyDelay(driveDelay);
             lastSeenDirection = 1;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 1 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -219,6 +229,7 @@ int main()
             PWM_WriteCompare2(maxSpeed-10);
             CyDelay(driveDelay);
             lastSeenDirection = 0;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 1)
         {
@@ -230,6 +241,7 @@ int main()
             PWM_WriteCompare2(0);
             CyDelay(driveDelay);
             lastSeenDirection = 1;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -241,6 +253,7 @@ int main()
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
             lastSeenDirection = 0;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 0)
         {
@@ -251,6 +264,7 @@ int main()
             PWM_WriteCompare2(80);
             CyDelay(driveDelay);
             lastSeenDirection = 1;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -261,6 +275,7 @@ int main()
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
             lastSeenDirection = 0;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 0)
         {
@@ -271,6 +286,7 @@ int main()
             PWM_WriteCompare2(140);
             CyDelay(driveDelay);
             lastSeenDirection = 1;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -281,6 +297,7 @@ int main()
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
             lastSeenDirection = 0;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -291,12 +308,14 @@ int main()
             PWM_WriteCompare2(205);
             CyDelay(driveDelay);
             lastSeenDirection = 1;
+            lastSeenAllBlack = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 1 && dig.r2 == 0 && dig.r3 == 0)
         {
             //001100
             //both middle sensors see the line so we go forwards with full speed
             motor_forward(maxSpeed,driveDelay);
+            lastSeenAllBlack = 0;
         }
         else if (dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -309,6 +328,7 @@ int main()
             {
                 motor_turn(maxSpeed,maxSpeed-255,driveDelay);
             }
+            lastSeenAllBlack = 0;
         }
         else if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {
@@ -319,6 +339,7 @@ int main()
         {
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(maxSpeed);
+            lastSeenAllBlack = 0;
         }
         
         
