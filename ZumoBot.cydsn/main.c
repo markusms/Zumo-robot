@@ -92,7 +92,7 @@ int main()
     {
         //Battery + LED
         time = GetTicks()/1000; //seconds
-        if (time > (10*timesCheckedBattery)) //go here every 10 seconds
+        /*if (time > (5*timesCheckedBattery)) //go here every 10 seconds
         {
             ADC_Battery_StartConvert();
             if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
@@ -124,7 +124,7 @@ int main()
         {
             BatteryLed_Write(0);
             ledOn = 0;
-        }
+        }*/
         
         //Line reading with motor control
         // read raw sensor values
@@ -185,62 +185,103 @@ int main()
         if(dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //100000
-            motor_turn(maxSpeed-250,maxSpeed,driveDelay);
+            MotorDirLeft_Write(1);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(20);
+            PWM_WriteCompare2(maxSpeed-20);
+            CyDelay(driveDelay);
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1)
         {
             //000001
-            motor_turn(maxSpeed,maxSpeed-250,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(maxSpeed-20);
+            PWM_WriteCompare2(20);
+            CyDelay(driveDelay);
             lastSeenDirection = 1;
         }
         else if(dig.l3 == 1 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //110000
-            motor_turn(maxSpeed-215,maxSpeed,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(0);
+            PWM_WriteCompare2(maxSpeed-10);
+            CyDelay(driveDelay);
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 1)
         {
             //000011
-            motor_turn(maxSpeed,maxSpeed-215,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed-10);
+            PWM_WriteCompare2(0);
+            CyDelay(driveDelay);
             lastSeenDirection = 1;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //010000
-            motor_turn(maxSpeed-180,maxSpeed,driveDelay);
+            
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(80);
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(driveDelay);
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 0)
         {
             //000010
-            motor_turn(maxSpeed,maxSpeed-180,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed);
+            PWM_WriteCompare2(80);
+            CyDelay(driveDelay);
             lastSeenDirection = 1;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //011000
-            motor_turn(maxSpeed-90,maxSpeed,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(140);
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(driveDelay);
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 0)
         {
             //000110
-            motor_turn(maxSpeed,maxSpeed-90,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed);
+            PWM_WriteCompare2(140);
+            CyDelay(driveDelay);
             lastSeenDirection = 1;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //001000
-            motor_turn(maxSpeed-55,maxSpeed,driveDelay);
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(205);
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(driveDelay);
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //000100
-            motor_turn(maxSpeed,maxSpeed-55,driveDelay);
-            lastSeenDirection = 0;
+            MotorDirLeft_Write(0);
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed);
+            PWM_WriteCompare2(205);
+            CyDelay(driveDelay);
+            lastSeenDirection = 1;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 1 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -258,11 +299,11 @@ int main()
                 motor_turn(maxSpeed,maxSpeed-255,driveDelay);
             }
         }
-       /* else if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
+        else if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(maxSpeed);
-        }*/
+        }
         else 
         {
             PWM_WriteCompare1(maxSpeed);
