@@ -69,6 +69,7 @@ int main()
     int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
     int counter = 0; //counter for printing reflectance sensor variables
     int driveDelay = 8, maxSpeed = 255;
+    int timesSeenAllBlack = 0;
     int16 adcresult =0;
     float volts = 0.0;
   
@@ -85,8 +86,8 @@ int main()
     // SW1_Read() returns one when button is not pressed
     
     motor_start(); //start the motor
-    PWM_WriteCompare1(0);
-    PWM_WriteCompare2(0);
+    PWM_WriteCompare1(0); //set left motor speed to 0
+    PWM_WriteCompare2(0); //set right motor speed to 0
     
     for(;;)
     {
@@ -174,27 +175,33 @@ int main()
         000011
         000001
         */
-        
+        if (timesSeenAllBlack == 3)
+        {
+            break; //go outside of the infinte for loop (to motor_stop();)
+        }
         if(dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {
-            PWM_WriteCompare1(0);
-            PWM_WriteCompare2(0);
-            CyDelay(2000);
-            motor_forward(120,200);
+            PWM_WriteCompare1(0); //set left motor to go forwards
+            PWM_WriteCompare2(0); //set right motor to go forwards
+            CyDelay(2000); //wait for 2 seconds
+            motor_forward(255,200);
+            timesSeenAllBlack++;
         }
         if(dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //100000
-            MotorDirLeft_Write(1);
+            //Only the left most reflectance sensors sees the line
+            MotorDirLeft_Write(1); //set left motor to go backwards
             MotorDirRight_Write(0);
-            PWM_WriteCompare1(20);
-            PWM_WriteCompare2(maxSpeed-20);
-            CyDelay(driveDelay);
+            PWM_WriteCompare1(20); //left motor speed to 20 (pwm 0-255)
+            PWM_WriteCompare2(maxSpeed-20); //right motor speed to maxSpeed-20 (pwm 0-255)
+            CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
             lastSeenDirection = 0;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1)
         {
             //000001
+            //only the right mose reflectance sensor sees the line
             MotorDirLeft_Write(0);
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed-20);
@@ -205,6 +212,7 @@ int main()
         else if(dig.l3 == 1 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //110000
+            //2 left most sensors see the line
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(0);
@@ -215,6 +223,7 @@ int main()
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 1)
         {
             //000011
+            //2 right most sensors see the line
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed-10);
@@ -225,7 +234,7 @@ int main()
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //010000
-            
+            //Only the sensor that is second from the left sees a line
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(80);
@@ -286,15 +295,17 @@ int main()
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 1 && dig.r2 == 0 && dig.r3 == 0)
         {
             //001100
+            //both middle sensors see the line so we go forwards with full speed
             motor_forward(maxSpeed,driveDelay);
         }
         else if (dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
-            if (lastSeenDirection == 0) //last seen line was on the left
+            //we only see white with every sensor
+            if (lastSeenDirection == 0) //last seen line was on the left => turn left
             {
                 motor_turn(maxSpeed-255,maxSpeed,driveDelay);
             }
-            else //last seen line on the right
+            else //last seen line on the right => turn right
             {
                 motor_turn(maxSpeed,maxSpeed-255,driveDelay);
             }
