@@ -71,10 +71,16 @@ int main()
     int driveDelay = 8, maxSpeed = 255;
     int timesSeenAllBlack = 1;
     int lastSeenAllBlack = 0;
+    //PID
+    int position = 0; //sensor showing the position of our robot, 0 middle, negative on the left, positive on the right
+    int error = 0, lastPosition = 0;
+    int Kp = 50, Kd = 50;
+    
     int16 adcresult =0;
     float volts = 5.0;
   
     reflectance_start();
+    CyDelay(20);
     reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
     
     printf("\nBEEP BOOP\n");
@@ -86,9 +92,18 @@ int main()
     // SW1_Read() returns zero when button is pressed
     // SW1_Read() returns one when button is not pressed
     
-    //motor_start(); //start the motor
+    motor_start(); //start the motor
     PWM_WriteCompare1(0); //set left motor speed to 0
     PWM_WriteCompare2(0); //set right motor speed to 0
+    
+    /*IR_Start();
+    
+    printf("\n\nIR test\n");
+    
+    IR_flush(); // clear IR receive buffer
+    printf("Buffer cleared\n");
+    
+    IR_wait(); // wait for IR command*/
     
     for(;;)
     {
@@ -137,13 +152,7 @@ int main()
         // when blackness value is over threshold the sensors reads 1, otherwise 0
         reflectance_digital(&dig); //print out 0 or 1 according to results of reflectance period
         //printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);        //print out 0 or 1 according to results of reflectance period
-        if (counter == 7)
-        {
-            //printf("Vasemmat: L3: %5d L2: %5d L1: %5d oik.: R1: %5d R2: %5d R3: %5d \n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
-            //printf("Vasemmat: %5d %5d %5d oik.: %5d %5d %5d \n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
-            printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
-            counter = 0;
-        }
+        
         //printf("L2 sensori: %5d\n",ref.l2);
         //printf("R2 sensori: %5d\n",ref.r2);
         /*if (ref.l1 > 10000 && ref.l2 > 10000 && ref.l3 > 10000) //90 degree left
@@ -188,7 +197,7 @@ int main()
                 {
                     PWM_WriteCompare1(0); //set left motor to go forwards
                     PWM_WriteCompare2(0); //set right motor to go forwards
-                    CyDelay(5000); //wait for 2 seconds
+                    CyDelay(2000); //wait for 2 seconds
                     motor_forward(255,200);
                 }
                 timesSeenAllBlack++;
@@ -199,123 +208,156 @@ int main()
         {
             //100000
             //Only the left most reflectance sensors sees the line
+            /*
             MotorDirLeft_Write(1); //set left motor to go backwards
             MotorDirRight_Write(0);
             PWM_WriteCompare1(20); //left motor speed to 20 (pwm 0-255)
             PWM_WriteCompare2(maxSpeed-20); //right motor speed to maxSpeed-20 (pwm 0-255)
             CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
+            */
             lastSeenDirection = 0;
             lastSeenAllBlack = 0;
+            position = -5;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1)
         {
             //000001
             //only the right mose reflectance sensor sees the line
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed-20);
             PWM_WriteCompare2(20);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 1;
             lastSeenAllBlack = 0;
+            position = 5;
         }
         else if(dig.l3 == 1 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //110000
             //2 left most sensors see the line
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(0);
             PWM_WriteCompare2(maxSpeed-10);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 0;
             lastSeenAllBlack = 0;
+            position = -4;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 1)
         {
             //000011
             //2 right most sensors see the line
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed-10);
             PWM_WriteCompare2(0);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 1;
             lastSeenAllBlack = 0;
+            position = 4;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //010000
             //Only the sensor that is second from the left sees a line
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(80);
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 0;
             lastSeenAllBlack = 0;
+            position = -3;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 1 && dig.r3 == 0)
         {
             //000010
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(80);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 1;
             lastSeenAllBlack = 0;
+            position = 3;
         }
         else if(dig.l3 == 0 && dig.l2 == 1 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //011000
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(140);
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 0;
             lastSeenAllBlack = 0;
+            position = -2;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 0)
         {
             //000110
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(140);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 1;
             lastSeenAllBlack = 0;
+            position = 2;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
             //001000
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(205);
             PWM_WriteCompare2(maxSpeed);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 0;
             lastSeenAllBlack = 0;
+            position = -1;
         }
-        else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
+        else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 1 && dig.r2 == 0 && dig.r3 == 0)
         {
             //000100
+            /*
             MotorDirLeft_Write(0);
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(205);
             CyDelay(driveDelay);
+            */
             lastSeenDirection = 1;
             lastSeenAllBlack = 0;
+            position = 1;
         }
         else if(dig.l3 == 0 && dig.l2 == 0 && dig.l1 == 1 && dig.r1 == 1 && dig.r2 == 0 && dig.r3 == 0)
         {
             //001100
             //both middle sensors see the line so we go forwards with full speed
+            /*
             motor_forward(maxSpeed,driveDelay);
+            */
             lastSeenAllBlack = 0;
+            position = 0;
         }
         else if (dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {
@@ -330,11 +372,11 @@ int main()
             }
             lastSeenAllBlack = 0;
         }
-        else if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
+        /*else if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {
             PWM_WriteCompare1(maxSpeed);
             PWM_WriteCompare2(maxSpeed);
-        }
+        }*/
         else 
         {
             PWM_WriteCompare1(maxSpeed);
@@ -342,60 +384,99 @@ int main()
             lastSeenAllBlack = 0;
         }
         
+        if (counter == 12)
+        {
+            //printf("Vasemmat: L3: %5d L2: %5d L1: %5d oik.: R1: %5d R2: %5d R3: %5d \n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
+            printf("Vasemmat: %5d %5d %5d oik.: %5d %5d %5d \n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
+            printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
+            
         
+            printf("error: %d\n", error);
+            printf("position: %d\n", position);
+            printf("Last position: %d\n", lastPosition);
+            printf("P: %d\n",(Kp*position));
+            printf("D: %d\n",(Kd*(position-lastPosition)));
+            counter = 0;
+        }
         
+        //PID controller (only PD because I is not needed in this case)
+        if (lastPosition < 0)
+        {
+            if (position < lastPosition) // -5 < -4
+            {
+                error = (-1)*(Kp*position)+(Kd*(-1)*(position+(-1)*lastPosition));
+            }
+            else  // -3 > -4
+            {
+                error = (-1)*(Kp*position)+(Kd*(-1)*(position+(-1)*lastPosition));
+            }
+        }
+        else
+        {
+            if (position < lastPosition) // 3 < 4
+            {
+                error = (Kp*position)+(Kd*(position-lastPosition));
+            }
+            else // 4 > 3
+            {
+                error = (Kp*position)+(Kd*(position-lastPosition));
+            }
+        }
+        lastPosition = position;
         
-        /* Rata ilman sensoreita
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);     // left motor speed
-        MotorDirRight_Write(0);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);     // right motor speed
-        CyDelay(3100);              // delay (drive this amount of time before continuing with the next step)
+        if (error > 255) { //oikealla
+            error = 255;
+        }
+        else if (error < 0) //vasemmalla
+        {
+            error *= -1;
+        }
         
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(1);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(455);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(0);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(2700);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(1);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(470);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(0);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(2700);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(1);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(435);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(0);     // set RightMotor backward mode
-        PWM_WriteCompare2(57);       //right motor speed
-        CyDelay(3900);
-        
-        MotorDirLeft_Write(0);      // set LeftMotor forward mode
-        PWM_WriteCompare1(120);    //left motor speed
-        MotorDirRight_Write(0);     // set RightMotor backward mode
-        PWM_WriteCompare2(120);       //right motor speed
-        CyDelay(220);
-        
-        motor_stop();*/
-        
+        if (position < 0) //vasemmalla
+        {
+            MotorDirLeft_Write(0); //set left motor to go backwards
+            MotorDirRight_Write(0);
+            if (maxSpeed-error < 10)
+            {
+                MotorDirLeft_Write(1);
+                PWM_WriteCompare1(35);
+            }
+            else if (maxSpeed-error < 60)
+            {
+                MotorDirLeft_Write(1);
+                PWM_WriteCompare1(15);
+            }
+            else
+            {
+                PWM_WriteCompare1(maxSpeed-error); //left motor speed to 20 (pwm 0-255)
+            }
+            PWM_WriteCompare2(maxSpeed); //right motor speed to maxSpeed-20 (pwm 0-255)
+            CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
+            MotorDirLeft_Write(0);
+        } 
+        else //oikealla tai keskellä
+        {
+            MotorDirLeft_Write(0); //set left motor to go backwards
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed); //left motor speed to 20 (pwm 0-255)
+            if (maxSpeed-error < 10)
+            {
+                MotorDirRight_Write(1);
+                PWM_WriteCompare2(35); //right motor speed to maxSpeed-20 (pwm 0-255)
+            }
+            else if (maxSpeed-error < 60)
+            {
+                MotorDirRight_Write(1);
+                PWM_WriteCompare2(15);
+            }
+            else
+            {
+                PWM_WriteCompare2(maxSpeed-error);
+            }
+            
+            CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
+            MotorDirRight_Write(0);
+        }
         
         counter++;
     }
