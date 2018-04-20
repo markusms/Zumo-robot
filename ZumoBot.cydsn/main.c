@@ -68,13 +68,237 @@ int main()
     int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
     int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
     int counter = 0; //counter for printing reflectance sensor variables
+    int driveDelay = 5, maxSpeed = 255;
+
+    //PD controller
+    int Kp = 25, Kd = 25;
+    int errorLeft = 0, errorRight = 0;
+    int lastErrorLeft = 0, lastErrorRight = 0;
+    int turnLeft = 0; 
+    int turnRight = 0; 
+    int motorSpeed = 0;
+    int refLeft = 16000, refRight = 16000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
+    
+    int16 adcresult =0;
+    float volts = 5.0;
+  
+    reflectance_start();
+    CyDelay(20);
+    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
+    
+    printf("\nBEEP BoOoOoP\n");
+
+    //BatteryLed_Write(1); // Switch led on 
+    BatteryLed_Write(0); // Switch led off 
+    //uint8 button;
+    //button = SW1_Read(); // read SW1 on pSoC board
+    // SW1_Read() returns zero when button is pressed
+    // SW1_Read() returns one when button is not pressed
+    
+    motor_start(); //start the motor
+    PWM_WriteCompare1(0); //set left motor speed to 0
+    PWM_WriteCompare2(0); //set right motor speed to 0
+    
+    /*
+    IR_Start();
+    IR_flush(); // clear IR receive buffer
+    IR_wait(); // wait for IR command
+    */
+    
+    for(;;)
+    {
+        //Line reading with motor control
+        // read raw sensor values
+        reflectance_read(&ref);
+        //printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
+        //r3 = oikea reuna, 13 = vasen reuna
+        // read digital values that are based on threshold. 0 = white, 1 = black
+        // when blackness value is over threshold the sensors reads 1, otherwise 0
+        reflectance_digital(&dig); //print out 0 or 1 according to results of reflectance period
+        //printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);        //print out 0 or 1 according to results of reflectance period
+        
+        /*
+        if (counter == 12)
+        {
+            //printf("Vasemmat: L3: %5d L2: %5d L1: %5d oik.: R1: %5d R2: %5d R3: %5d \n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
+            //printf("Vasemmat: %5d %5d %5d oik.: %5d %5d %5d \n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);
+            printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
+            counter = 0;
+        }
+        */
+        
+        counter++;
+        
+        //PID controller (PD)
+        //turnLeft = (18000-ref.l1)/(18000-9000)*255;
+        //turnRight = (18000-ref.r1)/(18000-9000)*255;
+
+        
+        if (ref.l1 > 16000)
+        {
+           refLeft = 16000;
+        }
+        else
+        {
+            refLeft = ref.l1;
+        }
+        if (ref.r1 > 16000)
+        {
+            refRight = 16000;
+        }
+        else
+        {
+            refRight = ref.r1;
+        }
+        errorLeft = 16000 - refLeft;
+        errorRight = 16000 - refRight;
+        
+        if (errorLeft == 0 && errorRight == 0) //both are on black
+        {
+            motor_forward(maxSpeed,driveDelay);
+        }
+        else if (errorLeft < errorRight) //left sees black, right starts seeing white
+        {
+            motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight);
+            //if (ref.l1 = 3000) { motorSpeed = 325000), we need to scale it to 0-255
+            //motorSpeed/325000 = x/255 
+            //x = motorSpeed/325000*255
+            motorSpeed = motorSpeed/325000*255;
+            if (motorSpeed > 255)
+            {
+                motorSpeed = maxSpeed;
+            }
+            if (motorSpeed < 0)
+            {
+                MotorDirLeft_Write(1); //left motor forward
+                MotorDirRight_Write(0); //right motor backwards
+                PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
+            }
+            else
+            {
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
+            }
+            
+        }
+        else if (errorRight < errorLeft) //right sees black
+        {
+            motorSpeed = Kp*errorLeft+Kd*(errorLeft-lastErrorLeft);
+            motorSpeed = motorSpeed/325000*255;
+            if (motorSpeed > 255)
+            {
+                motorSpeed = maxSpeed;
+            }
+            if (motorSpeed < 0)
+            {
+                MotorDirLeft_Write(0); //left motor forward
+                MotorDirRight_Write(1); //right motor backwards
+                PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
+            }
+            else
+            {
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
+            }
+        }
+        
+        lastErrorLeft = errorLeft;
+        lastErrorRight = errorRight;
+        
+        /*
+        if (turnLeft < 0)
+        {
+            turnLeft = 0;
+        }
+        if (turnRight < 0)
+        {
+            turnRight = 0;
+        }
+        */
+        
+        
+
+        
+        
+        
+        
+        //Battery + LED
+        /*
+        time = GetTicks()/1000; //seconds
+        if (time > (10*timesCheckedBattery)) //go here every 10 seconds
+        {
+            ADC_Battery_StartConvert();
+            if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
+                adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
+                // convert value to Volts
+                // you need to implement the conversion
+                
+                // Print both ADC results and converted value
+                volts = (float) adcresult/4095*5*1.5;
+                printf("%d %f V\r\n",adcresult, volts);
+            }
+            timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
+        }
+        if (volts < 4) //if battery is too low keep flashing the led
+        {
+            if (ledOn == 0) //if led is off, turn the led on
+            {
+                BatteryLed_Write(1);
+                ledOn = 1;
+            }
+            else //if led is on turn the led off
+            {
+                BatteryLed_Write(0);
+                ledOn = 0;
+            }
+            CyDelay(10);
+        }
+        if (volts >= 4 && ledOn == 1) //if battery is back to over 4 and led was left on, turn it off
+        {
+            BatteryLed_Write(0);
+            ledOn = 0;
+        }
+        */
+    }
+    motor_stop();  //stop the motor
+ }   
+#endif
+
+#if 0
+int main()
+{
+    struct sensors_ ref;
+    struct sensors_ dig;
+    
+    CyGlobalIntEnable; 
+    UART_1_Start();
+    Systick_Start();
+    
+    ADC_Battery_Start();        
+
+    int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
+    int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
+    int counter = 0; //counter for printing reflectance sensor variables
     int driveDelay = 8, maxSpeed = 255;
     int timesSeenAllBlack = 1;
     int lastSeenAllBlack = 0;
-    //PID
+    //PID hybrid
     int position = 0; //sensor showing the position of our robot, 0 middle, negative on the left, positive on the right
     int error = 0, lastPosition = 0;
     int Kp = 50, Kd = 50;
+    //PID
+    int turnLeft = 0; // 0 - 255
+    int turnRight = 0; // 0 - 255
     
     int16 adcresult =0;
     float volts = 5.0;
@@ -179,9 +403,13 @@ int main()
         /*
         100000
         110000
+        010000
         011000
+        001000
         001100
+        000100
         000110
+        000010
         000011
         000001
         */
@@ -399,7 +627,7 @@ int main()
             counter = 0;
         }
         
-        //PID controller (only PD because I is not needed in this case)
+        //PID hybrid controller (only PD because I is not needed in this case)
         if (lastPosition < 0)
         {
             if (position < lastPosition) // -5 < -4
@@ -434,7 +662,7 @@ int main()
         
         if (position < 0) //vasemmalla
         {
-            MotorDirLeft_Write(0); //set left motor to go backwards
+            MotorDirLeft_Write(0); 
             MotorDirRight_Write(0);
             if (maxSpeed-error < 10)
             {
@@ -443,7 +671,7 @@ int main()
             }
             else if (maxSpeed-error < 60)
             {
-                MotorDirLeft_Write(1);
+                MotorDirLeft_Write(1); //set left motor to go backwards
                 PWM_WriteCompare1(15);
             }
             else
@@ -456,7 +684,7 @@ int main()
         } 
         else //oikealla tai keskellä
         {
-            MotorDirLeft_Write(0); //set left motor to go backwards
+            MotorDirLeft_Write(0); 
             MotorDirRight_Write(0);
             PWM_WriteCompare1(maxSpeed); //left motor speed to 20 (pwm 0-255)
             if (maxSpeed-error < 10)
@@ -466,7 +694,7 @@ int main()
             }
             else if (maxSpeed-error < 60)
             {
-                MotorDirRight_Write(1);
+                MotorDirRight_Write(1); //set right motor to go backwards
                 PWM_WriteCompare2(15);
             }
             else
@@ -477,6 +705,11 @@ int main()
             CyDelay(driveDelay); //drive with the motor speed/direction settings for this delay amount (milliseconds)
             MotorDirRight_Write(0);
         }
+        
+        //PID controller
+        
+        turnLeft = (18000-ref.l1)/(18000-9000)*255;
+        turnRight = (18000-ref.r1)/(18000-9000)*255;
         
         counter++;
     }
