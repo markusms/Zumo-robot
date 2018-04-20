@@ -68,25 +68,27 @@ int main()
     int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
     int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
     int counter = 0; //counter for printing reflectance sensor variables
-    int driveDelay = 5, maxSpeed = 255;
+    int driveDelay = 2, maxSpeed = 255;
 
     //PD controller
-    int Kp = 25, Kd = 25;
-    int errorLeft = 0, errorRight = 0;
-    int lastErrorLeft = 0, lastErrorRight = 0;
+    int Kp = 20, Kd = 400;
+    int errorLeft = 0, errorRight = 0, error = 0;
+    int lastErrorLeft = 0, lastErrorRight = 0, lastError = 0;
     int turnLeft = 0; 
     int turnRight = 0; 
     int motorSpeed = 0;
-    int refLeft = 16000, refRight = 16000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
+    int refLeft = 13000, refRight = 13000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
+    int maxRef = 13000;
+    int pwmScaler = 200000;
     
-    int16 adcresult =0;
+    int16 adcresult = 0;
     float volts = 5.0;
   
     reflectance_start();
     CyDelay(20);
     reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
     
-    printf("\nBEEP BoOoOoP\n");
+    printf("\nBEEP BOOP\n");
 
     //BatteryLed_Write(1); // Switch led on 
     BatteryLed_Write(0); // Switch led off 
@@ -134,84 +136,111 @@ int main()
         //turnRight = (18000-ref.r1)/(18000-9000)*255;
 
         
-        if (ref.l1 > 16000)
+        if (ref.l1 > maxRef)
         {
-           refLeft = 16000;
+           refLeft = maxRef;
         }
         else
         {
             refLeft = ref.l1;
         }
-        if (ref.r1 > 16000)
+        if (ref.r1 > maxRef)
         {
-            refRight = 16000;
+            refRight = maxRef;
         }
         else
         {
             refRight = ref.r1;
         }
-        errorLeft = 16000 - refLeft;
-        errorRight = 16000 - refRight;
+        errorLeft = maxRef - refLeft;
+        errorRight = maxRef - refRight;
         
-        if (errorLeft == 0 && errorRight == 0) //both are on black
+        if (refLeft < 5000 && refRight < 5000) //both see white
         {
-            motor_forward(maxSpeed,driveDelay);
-        }
-        else if (errorLeft < errorRight) //left sees black, right starts seeing white
-        {
-            motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight);
-            //if (ref.l1 = 3000) { motorSpeed = 325000), we need to scale it to 0-255
-            //motorSpeed/325000 = x/255 
-            //x = motorSpeed/325000*255
-            motorSpeed = motorSpeed/325000*255;
-            if (motorSpeed > 255)
-            {
-                motorSpeed = maxSpeed;
-            }
-            if (motorSpeed < 0)
-            {
-                MotorDirLeft_Write(1); //left motor forward
-                MotorDirRight_Write(0); //right motor backwards
-                PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
-                PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
-                CyDelay(driveDelay); //drive this long
-            }
-            else
+            if (lastSeenDirection == 1) //left was seen last
             {
                 MotorDirLeft_Write(0); 
                 MotorDirRight_Write(0);
-                PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare1(0); //left motor speed (pwm 0-255)
                 PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
                 CyDelay(driveDelay); //drive this long
             }
-            
-        }
-        else if (errorRight < errorLeft) //right sees black
-        {
-            motorSpeed = Kp*errorLeft+Kd*(errorLeft-lastErrorLeft);
-            motorSpeed = motorSpeed/325000*255;
-            if (motorSpeed > 255)
-            {
-                motorSpeed = maxSpeed;
-            }
-            if (motorSpeed < 0)
-            {
-                MotorDirLeft_Write(0); //left motor forward
-                MotorDirRight_Write(1); //right motor backwards
-                PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
-                PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
-                CyDelay(driveDelay); //drive this long
-            }
-            else
+            else //last seen right
             {
                 MotorDirLeft_Write(0); 
                 MotorDirRight_Write(0);
                 PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
-                PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                PWM_WriteCompare2(0); //right motor speed to (pwm 0-255)
                 CyDelay(driveDelay); //drive this long
             }
         }
-        
+        else
+        {
+            if (refLeft == maxRef && refRight == maxRef) //both are on black
+            {
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay);
+            }
+            else if (errorLeft < errorRight) //left sees black, right starts seeing white
+            {
+                error = Kp*errorRight+Kd*(error-lastError);
+                //if (ref.l1 = 3000) { motorSpeed = 430000), we need to scale it to 0-255
+                //motorSpeed/430000 = x/255 
+                //x = motorSpeed/430000*255
+                motorSpeed = error/pwmScaler*255;
+                if (motorSpeed > 255)
+                {
+                    motorSpeed = maxSpeed;
+                }
+                if (motorSpeed < 0)
+                {
+                    MotorDirLeft_Write(1); //left motor forward
+                    MotorDirRight_Write(0); //right motor backwards
+                    PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                    PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                    CyDelay(driveDelay); //drive this long
+                }
+                else
+                {
+                    MotorDirLeft_Write(0); 
+                    MotorDirRight_Write(0);
+                    PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                    PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                    CyDelay(driveDelay); //drive this long
+                }
+                lastSeenDirection = 1;
+            }
+            else if (errorRight < errorLeft) //right sees black
+            {
+                error = Kp*errorLeft+Kd*(error-lastError);
+                motorSpeed = error/pwmScaler*255;
+                if (motorSpeed > 255)
+                {
+                    motorSpeed = maxSpeed;
+                }
+                if (motorSpeed < 0)
+                {
+                    MotorDirLeft_Write(0); //left motor forward
+                    MotorDirRight_Write(1); //right motor backwards
+                    PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                    PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                    CyDelay(driveDelay); //drive this long
+                }
+                else
+                {
+                    MotorDirLeft_Write(0); 
+                    MotorDirRight_Write(0);
+                    PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                    PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                    CyDelay(driveDelay); //drive this long
+                }
+                lastSeenDirection = 0;
+            }
+        }
+        lastError = error;
         lastErrorLeft = errorLeft;
         lastErrorRight = errorRight;
         
@@ -830,7 +859,7 @@ int main()
         // read digital values that are based on threshold. 0 = white, 1 = black
         // when blackness value is over threshold the sensors reads 1, otherwise 0
         reflectance_digital(&dig);      //print out 0 or 1 according to results of reflectance period
-        printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);        //print out 0 or 1 according to results of reflectance period
+        //printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);        //print out 0 or 1 according to results of reflectance period
         
         CyDelay(200);
     }
