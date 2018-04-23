@@ -71,16 +71,16 @@ int main()
     int driveDelay = 5, maxSpeed = 255;
 
     //PD controller
-    int Kp = 20, Kd = 15;
+    int Kp = 19, Kd = 35;
     int errorLeft = 0, errorRight = 0, error = 0;
     int lastErrorLeft = 0, lastErrorRight = 0, lastError = 0;
     int turnLeft = 0; 
     int turnRight = 0; 
     int motorSpeedInt = 0;
     double motorSpeed = 0;
-    int refLeft = 15000, refRight = 15000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
-    int maxRef = 15000;
-    int pwmScaler = 240000;
+    int refLeft = 16000, refRight = 16000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
+    int maxRef = 16000;
+    int pwmScaler = 260000;
     
     int16 adcresult = 0;
     float volts = 5.0;
