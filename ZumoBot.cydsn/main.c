@@ -68,18 +68,19 @@ int main()
     int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
     int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
     int counter = 0; //counter for printing reflectance sensor variables
-    int driveDelay = 2, maxSpeed = 255;
+    int driveDelay = 5, maxSpeed = 255;
 
     //PD controller
-    int Kp = 20, Kd = 400;
+    int Kp = 20, Kd = 15;
     int errorLeft = 0, errorRight = 0, error = 0;
     int lastErrorLeft = 0, lastErrorRight = 0, lastError = 0;
     int turnLeft = 0; 
     int turnRight = 0; 
-    int motorSpeed = 0;
-    int refLeft = 13000, refRight = 13000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
-    int maxRef = 13000;
-    int pwmScaler = 200000;
+    int motorSpeedInt = 0;
+    double motorSpeed = 0;
+    int refLeft = 15000, refRight = 15000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
+    int maxRef = 15000;
+    int pwmScaler = 240000;
     
     int16 adcresult = 0;
     float volts = 5.0;
@@ -186,80 +187,64 @@ int main()
             }
             else if (errorLeft < errorRight) //left sees black, right starts seeing white
             {
-                error = Kp*errorRight+Kd*(error-lastError);
+                motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight);
+                /*printf("errorRight: %d\n", errorRight);
+                printf("lastErrorRight: %d\n", lastErrorRight);
+                printf("motorSpeed: %lf\n", motorSpeed);*/
                 //if (ref.l1 = 3000) { motorSpeed = 430000), we need to scale it to 0-255
                 //motorSpeed/430000 = x/255 
                 //x = motorSpeed/430000*255
-                motorSpeed = error/pwmScaler*255;
+                motorSpeed = motorSpeed/pwmScaler*255;
+                motorSpeedInt = (int) motorSpeed;
                 if (motorSpeed > 255)
                 {
                     motorSpeed = maxSpeed;
                 }
-                if (motorSpeed < 0)
+                /*if (motorSpeedInt < 0)
                 {
-                    MotorDirLeft_Write(1); //left motor forward
-                    MotorDirRight_Write(0); //right motor backwards
-                    PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
+                    MotorDirLeft_Write(1); //left motor backwards
+                    MotorDirRight_Write(0); //right motor forward
+                    PWM_WriteCompare1(motorSpeedInt*(-1)); //left motor speed (pwm 0-255)
                     PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
                     CyDelay(driveDelay); //drive this long
-                }
-                else
-                {
-                    MotorDirLeft_Write(0); 
-                    MotorDirRight_Write(0);
-                    PWM_WriteCompare1(motorSpeed); //left motor speed (pwm 0-255)
-                    PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
-                    CyDelay(driveDelay); //drive this long
-                }
+                }*/
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed-motorSpeedInt); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
                 lastSeenDirection = 1;
             }
             else if (errorRight < errorLeft) //right sees black
             {
-                error = Kp*errorLeft+Kd*(error-lastError);
-                motorSpeed = error/pwmScaler*255;
+                motorSpeed = Kp*errorLeft+Kd*(errorLeft-lastErrorLeft);
+                motorSpeed = motorSpeed/pwmScaler*255;
+                motorSpeedInt = (int) motorSpeed;
+                //printf("motorSpeedScaledLEFT: %d\n", 255-motorSpeedInt);
                 if (motorSpeed > 255)
                 {
                     motorSpeed = maxSpeed;
                 }
-                if (motorSpeed < 0)
+               /* if (motorSpeedInt < 0)
                 {
                     MotorDirLeft_Write(0); //left motor forward
                     MotorDirRight_Write(1); //right motor backwards
                     PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
-                    PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
+                    PWM_WriteCompare2(motorSpeedInt*(-1)); //right motor speed to (pwm 0-255)
                     CyDelay(driveDelay); //drive this long
-                }
-                else
-                {
-                    MotorDirLeft_Write(0); 
-                    MotorDirRight_Write(0);
-                    PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
-                    PWM_WriteCompare2(motorSpeed); //right motor speed to (pwm 0-255)
-                    CyDelay(driveDelay); //drive this long
-                }
+                }*/
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
+                PWM_WriteCompare2(maxSpeed-motorSpeedInt); //right motor speed to (pwm 0-255)
+                CyDelay(driveDelay); //drive this long
                 lastSeenDirection = 0;
             }
         }
-        lastError = error;
+        /*printf("kd error %d\n", errorLeft-lastErrorLeft);
+        CyDelay(400);*/
         lastErrorLeft = errorLeft;
         lastErrorRight = errorRight;
-        
-        /*
-        if (turnLeft < 0)
-        {
-            turnLeft = 0;
-        }
-        if (turnRight < 0)
-        {
-            turnRight = 0;
-        }
-        */
-        
-        
-
-        
-        
-        
         
         //Battery + LED
         /*
