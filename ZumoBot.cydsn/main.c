@@ -31,6 +31,8 @@
 
 #include <project.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include "Systick.h"
 #include "Motor.h"
 #include "Ultra.h"
@@ -52,7 +54,168 @@ int rread(void);
  * @details  ** Enable global interrupt since Zumo library uses interrupts. **<br>&nbsp;&nbsp;&nbsp;CyGlobalIntEnable;<br>
 */
 
-#if 1
+
+#if 1 //SUMO
+int main()
+{
+    struct sensors_ ref;
+    struct sensors_ dig;
+    
+    CyGlobalIntEnable; 
+    UART_1_Start();
+    Systick_Start();
+    IR_Start();
+    ADC_Battery_Start(); 
+    Ultra_Start(); // Ultra Sonic Start function
+
+    int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
+    int driveDelay = 2, maxSpeed = 255;
+    
+    //sumo variables
+    int distance = 0;
+    int random = 0;
+    
+    int16 adcresult = 0;
+    float volts = 5.0;
+  
+    reflectance_start();
+    CyDelay(20);
+    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
+    
+    printf("\nBEEP BOOP\n");
+    BatteryLed_Write(0); // Switch led off 
+    
+    motor_start(); //start the motor
+    PWM_WriteCompare1(0); //set left motor speed to 0
+    PWM_WriteCompare2(0); //set right motor speed to 0
+    
+    for(;;) //first loop to drive until the first line is seen and then wait for infrared signal
+    {
+        reflectance_read(&ref);
+        reflectance_digital(&dig);
+        motor_forward(50,driveDelay+8);
+        if(dig.l3 == 1 && dig.r3 == 1) //if left and right most reflectance sensors see black then break
+        {
+            PWM_WriteCompare1(0); //set left motor speed to 0
+            PWM_WriteCompare2(0); //set right motor speed to 
+            break;
+        }
+    }
+    
+    IR_flush(); // clear IR receive buffer
+    IR_wait(); // wait for IR command
+    motor_forward(maxSpeed,250);
+    
+    for(;;)
+    {
+        reflectance_read(&ref);
+        reflectance_digital(&dig);
+        distance = Ultra_GetDistance();
+        printf("%d\n",distance);
+        srand(GetTicks());
+        
+        if (dig.l3 == 1 || dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1 || dig.r3 == 1) //if any of the sensors see black
+        {
+            MotorDirLeft_Write(1); 
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(maxSpeed); 
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(500);
+            random = rand() % 2;
+            if (random == 0)
+            {
+                random = rand() % 500;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+            else
+            {
+                random = rand() % 500;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+            
+        }
+        else if (distance < 10) //sees an opponent
+        {
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(driveDelay);
+        }
+        else
+        {
+            /*random = rand() % 5; //0 - 4
+            
+            switch (random)
+            {
+                case 0:
+                
+                break;
+                case 1:
+                
+                break;
+                case 2:
+                
+                break;
+                case 3:
+                
+                break;
+                case 4:
+                
+                break;
+            }*/
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed); 
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(driveDelay);
+        }
+        /*
+        //Battery + LED
+        time = GetTicks()/1000; //seconds
+        if (time > (60*timesCheckedBattery)) //go here every 60 seconds
+        {
+            ADC_Battery_StartConvert();
+            if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
+                adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
+                volts = (float) adcresult/4095*5*1.5;
+            }
+            timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
+        }
+        if (volts < 4) //if battery is too low keep flashing the led
+        {
+            if (ledOn == 0) //if led is off, turn the led on
+            {
+                BatteryLed_Write(1);
+                ledOn = 1;
+            }
+            else //if led is on turn the led off
+            {
+                BatteryLed_Write(0);
+                ledOn = 0;
+            }
+            CyDelay(10);
+        }
+        if (volts >= 4 && ledOn == 1) //if battery is back to over 4 and led was left on, turn it off
+        {
+            BatteryLed_Write(0);
+            ledOn = 0;
+        }*/
+    }
+    
+    motor_stop();  //stop the motor
+}   
+#endif
+
+#if 0 //PD LINE
 int main()
 {
     struct sensors_ ref;
@@ -89,13 +252,7 @@ int main()
     reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
     
     printf("\nBEEP BOOP\n");
-
-    //BatteryLed_Write(1); // Switch led on 
     BatteryLed_Write(0); // Switch led off 
-    //uint8 button;
-    //button = SW1_Read(); // read SW1 on pSoC board
-    // SW1_Read() returns zero when button is pressed
-    // SW1_Read() returns one when button is not pressed
     
     motor_start(); //start the motor
     PWM_WriteCompare1(0); //set left motor speed to 0
@@ -111,7 +268,6 @@ int main()
             PWM_WriteCompare2(0); //set right motor speed to 0
             lastSeenBlackLine = 1;
             timesSeenBlackLine = 1;
-            printf("Eka viiva\n");
             break;
         }
     }
@@ -244,7 +400,6 @@ int main()
         {
             timesSeenBlackLine++;
             lastSeenBlackLine = 1; //we are on top of a black line
-            printf("Musta viiva: %d\n", timesSeenBlackLine);
         }
         else if((ref.l3 < blackLineTreshold || ref.r3 < blackLineTreshold) && lastSeenBlackLine == 1)
         {
@@ -253,7 +408,6 @@ int main()
         
         if (timesSeenBlackLine == 3) //robot completed the route
         {
-            printf("3 viivaa nahty\n");
             PWM_WriteCompare1(0);
             PWM_WriteCompare2(0);
             break; 
@@ -291,7 +445,7 @@ int main()
         }
     }
     motor_stop();  //stop the motor
- }   
+}   
 #endif
 
 #if 0
@@ -873,7 +1027,7 @@ int main()
     //motor_turn(50,255,1000);     // turn
     //motor_backward(100,2000);    // movinb backward
     
-        motor_forward(255,2000);
+        motor_forward(50,4000);/*
         motor_turn(255,1,700);
         motor_forward(255,2000);
         motor_turn(1,255,700);
@@ -908,7 +1062,7 @@ int main()
         motor_backward(255,500);
         motor_backward(150,500);
         motor_backward(75,500);
-    
+    */
        
     motor_stop();               // motor stop
     
