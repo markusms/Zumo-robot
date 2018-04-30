@@ -29,6 +29,8 @@
     </p>
 */
 
+#include <stdlib.h>
+#include <time.h>
 #include <project.h>
 #include <stdio.h>
 #include "Systick.h"
@@ -52,7 +54,236 @@ int rread(void);
  * @details  ** Enable global interrupt since Zumo library uses interrupts. **<br>&nbsp;&nbsp;&nbsp;CyGlobalIntEnable;<br>
 */
 
+// !!!SUMO WRESTLING CODE!!!
 #if 1
+//battery level//
+int main()
+{
+    struct sensors_ ref;
+    struct sensors_ dig;
+    
+    CyGlobalIntEnable; 
+    UART_1_Start();
+    Systick_Start();
+    IR_Start();    
+    ADC_Battery_Start();
+    IR_flush(); // clear IR receive buffer
+    reflectance_start();
+    CyDelay(20);
+    reflectance_set_threshold(13275, 13275, 13275, 13275, 13275, 13275); // set center sensor threshold to 11000 and others to 9000
+
+    int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
+    int driveDelay = 5, maxSpeed = 255;
+    motor_start();
+    PWM_WriteCompare1(0);
+    PWM_WriteCompare2(0);
+    printf("\nBEEP BOOP\n");
+    
+    int distance = 0;
+    int random = 0;
+   
+    for(;;)
+    {
+        reflectance_read(&ref);
+        //printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);       // print out each period of reflectance sensors
+        //r3 = oikea reuna, 13 = vasen reuna
+        // read digital values that are based on threshold. 0 = white, 1 = black
+        // when blackness value is over threshold the sensors reads 1, otherwise 0
+        reflectance_digital(&dig); //print out 0 or 1 according to results of reflectance period
+        //printf("%5d %5d %5d %5d %5d %5d \r\n", dig.l3, dig.l2, dig.l1, dig.r1, dig.r2, dig.r3);        //print out 0 or 1 according to results of reflectance period
+        
+        if (SW1_Read() == 0 && (dig.l3 == 1 || dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1 || dig.r3 == 1))        
+        {
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(100); 
+            PWM_WriteCompare2(100);
+        }
+        
+        if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
+        {       
+            PWM_WriteCompare1(0); 
+            PWM_WriteCompare2(0);
+            IR_wait();
+            break;
+        }
+    }
+    MotorDirLeft_Write(0); 
+    MotorDirRight_Write(0);
+    PWM_WriteCompare1(maxSpeed);
+    PWM_WriteCompare2(maxSpeed);
+    CyDelay(1000);
+    
+    for(;;)
+    {
+        reflectance_read(&ref);
+        reflectance_digital(&dig);
+        distance = Ultra_GetDistance();
+        srand(GetTicks());
+                  
+        if (dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0) //if the leftmost sensor sees black
+        {   
+            MotorDirLeft_Write(1); 
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(maxSpeed); 
+            PWM_WriteCompare2(170);
+            CyDelay(500);
+            
+            random = rand() % 2;
+            
+            if (random == 0) {
+                random = rand() % 500;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+            
+            if (random == 1) {
+                random = rand() % 500;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+   
+        }
+        else if(dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1) // if the rightmost sensor sees black
+        {   
+            MotorDirLeft_Write(1); 
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(170);
+            random = rand() % 600;
+            PWM_WriteCompare2(maxSpeed);
+            if (random < 300)
+            {
+                random = 300;
+            }
+            CyDelay(random);
+            
+            random = rand() % 2;
+            
+            if (random == 0) {
+                random = rand() % 500;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+            
+            if (random == 1) {
+                random = rand() % 500;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+        }
+        else  if (dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1) //if any of the sensors see black
+        {
+            MotorDirLeft_Write(1); 
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(maxSpeed); 
+            PWM_WriteCompare2(maxSpeed);
+            random = rand() % 500;
+            if (random < 200)
+            {
+                random = 200;
+            }
+            CyDelay(random);
+            random = rand() % 2;
+            
+            if (random == 0)
+            {
+                random = rand() % 500;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }
+            else
+            {
+                random = rand() % 500;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(random);
+            }           
+        }
+        
+        else if (distance < 10) //sees an opponent
+        {
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed); 
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(driveDelay);
+        }
+        
+        else 
+        {
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(maxSpeed);
+            PWM_WriteCompare2(maxSpeed);
+            CyDelay(10);
+            
+        }
+    }
+    motor_stop();
+        
+
+    
+        
+        //Battery + LED
+        /*
+        time = GetTicks()/1000; //seconds
+        if (time > (10*timesCheckedBattery)) //go here every 10 seconds
+        {
+            ADC_Battery_StartConvert();
+            if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
+                adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
+                // convert value to Volts
+                // you need to implement the conversion
+                
+                // Print both ADC results and converted value
+                volts = (float) adcresult/4095*5*1.5;
+                printf("%d %f V\r\n",adcresult, volts);
+            }
+            timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
+        }
+        if (volts < 4) //if battery is too low keep flashing the led
+        {
+            if (ledOn == 0) //if led is off, turn the led on
+            {
+                BatteryLed_Write(1);
+                ledOn = 1;
+            }
+            else //if led is on turn the led off
+            {
+                BatteryLed_Write(0);
+                ledOn = 0;
+            }
+            CyDelay(10);
+        }
+        if (volts >= 4 && ledOn == 1) //if battery is back to over 4 and led was left on, turn it off
+        {
+            BatteryLed_Write(0);
+            ledOn = 0;
+        }
+        */
+}
+    
+ 
+//!!!END OF SUMO WRESTLING CODE!!!
+#endif
+#if 0
 //battery level//
 int main()
 {
@@ -865,9 +1096,19 @@ int main()
     //motor_turn(255,50,1000);     // turn
     //motor_forward(255,4000);
     //motor_turn(50,255,1000);     // turn
-    //motor_backward(100,2000);    // movinb backward
+    //motor_backward(100,2000);    // movin backward
     
-        motor_forward(255,2000);
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(100); 
+            PWM_WriteCompare2(100);
+            CyDelay(5000);
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(255); 
+            PWM_WriteCompare2(255);
+            CyDelay(5000);
+        /*motor_forward(100,4000);
         motor_turn(255,1,700);
         motor_forward(255,2000);
         motor_turn(1,255,700);
@@ -903,7 +1144,7 @@ int main()
         motor_backward(150,500);
         motor_backward(75,500);
     
-       
+       */
     motor_stop();               // motor stop
     
     for(;;)
