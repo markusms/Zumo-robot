@@ -113,11 +113,10 @@ int main()
     
     for(;;) //second sumo ring main loop
     {
-        reflectance_read(&ref);
-        reflectance_digital(&dig);
-        distance = Ultra_GetDistance();
-        printf("%d\n",distance);
-        srand(GetTicks());
+        reflectance_read(&ref); //update reflectance sensor values
+        reflectance_digital(&dig); //update refelectance sensor values depending on the threshold values (digital)
+        distance = Ultra_GetDistance(); //save ultra sensor distance value to distance variable
+        srand(GetTicks()); //seed the random value generator depending on the current time
         
         if (dig.l3 == 1 || dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1 || dig.r3 == 1) //if any of the sensors see black
         {
@@ -223,40 +222,46 @@ int main()
 #if 0 //PD LINE
 int main()
 {
-    struct sensors_ ref;
+    struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
     
     CyGlobalIntEnable; 
-    UART_1_Start();
-    Systick_Start();
-    IR_Start();
-    ADC_Battery_Start();        
+    UART_1_Start(); //serial port communication
+    Systick_Start(); //start system timer
+    IR_Start(); //start infrared sensor
+    ADC_Battery_Start(); //start battery checking
 
-    int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
-    int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
+    //battery variables
+    int time = 0; //time in seconds
+    int timesCheckedBattery = 1; //how many times the battery level has been checked
+    int ledOn = 0; //Is the battery led on? (0 = no, 1 = yes)
+    int16 adcresult = 0; //battery level from 0 to 4095
+    float volts = 5.0; //battery level in volts
+    
     int counter = 0; //counter for printing reflectance sensor variables
-    int driveDelay = 2, maxSpeed = 255;
-    int timesSeenBlackLine = 0;
+    
+    //motor variables
+    int driveDelay = 2; //how long are the motors driven for with 1 setting before new values are calculated
+    int maxSpeed = 255; //maximum speed for the motors
+    int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
+    int timesSeenBlackLine = 0; //how many times has a black line been seen (save to stop at the 3rd line)
     int lastSeenBlackLine = 0; //if this is 1 then we saw a black line during the last check so we do not count another black line because we are still on top of the same one we just added
     int blackLineTreshold = 10000; //black line counter treshold for the sensors
     
     //PD controller variables
-    int Kp = 19, Kd = 35;
-    int errorLeft = 0, errorRight = 0;
-    int lastErrorLeft = 0, lastErrorRight = 0;
-    int motorSpeedInt = 0;
-    double motorSpeed = 0;
+    int Kp = 19, Kd = 35; //Kp and Kd variables
+    int errorLeft = 0, errorRight = 0; //Proportional error for the left most center reflectance sensor and the right most reflectance sensor
+    int lastErrorLeft = 0, lastErrorRight = 0; //The previous error left and right
+    double motorSpeed = 0; //PD controller chosen motor speed (double)
+    int motorSpeedInt = 0; //PD controller chosen motor speed (int)
     int refLeft = 16000, refRight = 16000; //when the robot is in the middle of the line both sensors see a bit of white because they aren't in the middle of the line
-    int maxRef = 16000;
-    int pwmScaler = 260000;
+    int maxRef = 16000; //max reflectance sensor value which is considered as a "not full black"
+    int pwmScaler = 260000; //the number that is used to scale the error value to 0-255 pwm motor speed.
     
-    int16 adcresult = 0;
-    float volts = 5.0;
-  
-    reflectance_start();
-    CyDelay(20);
-    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
+    reflectance_start(); //reflectance sensor start
+    CyDelay(20); //wait for 20 ms
+    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set edge sensor thresholds to 9000 and others to 10000
     
-    printf("\nBEEP BOOP\n");
+    printf("\nBEEP BOOP\n");//write something to show that boot happened
     BatteryLed_Write(0); // Switch led off 
     
     motor_start(); //start the motor
@@ -265,28 +270,28 @@ int main()
     
     for(;;) //first loop to drive until the first line is seen and then wait for infrared signal
     {
-        reflectance_read(&ref);
-        motor_forward(100,driveDelay);
+        reflectance_read(&ref); //update reflectance sensor values
+        motor_forward(100,driveDelay); //Drive forwards for driveDelay ms with a speed of 100 (0-255)
         if(ref.l3 > blackLineTreshold && ref.r3 > blackLineTreshold) //if left and right most reflectance sensors see black then break
         {
             PWM_WriteCompare1(0); //set left motor speed to 0
             PWM_WriteCompare2(0); //set right motor speed to 0
-            lastSeenBlackLine = 1;
-            timesSeenBlackLine = 1;
-            break;
+            lastSeenBlackLine = 1; //we saw a black line the last time
+            timesSeenBlackLine = 1; //we have seen the black line 1 time
+            break; //go away from the infinite for loop
         }
     }
     
     IR_flush(); // clear IR receive buffer
     IR_wait(); // wait for IR command
     
-    for(;;) //main line following loop
+    for(;;) //The main line following loop.
     {
         //Line reading with motor control
         // read raw sensor values
         reflectance_read(&ref);
         /*
-        if (counter == 12)
+        if (counter == 12) //do not print every time the main loop is gone through to make reading the values easier
         {
             //printf("Vasemmat: L3: %5d L2: %5d L1: %5d oik.: R1: %5d R2: %5d R3: %5d \n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
             printf("%5d %5d %5d %5d %5d %5d\r\n", ref.l3, ref.l2, ref.l1, ref.r1, ref.r2, ref.r3);
@@ -294,10 +299,10 @@ int main()
         }
         */
         
-        counter++;
+        counter++; //print reading counter +1
         
-        //PID controller (PD)
-        if (ref.l1 > maxRef)
+        //PID controller (PD controller)
+        if (ref.l1 > maxRef) //if reflectance sensor sees a larger number than 16000 then make it 16000
         {
            refLeft = maxRef;
         }
@@ -305,7 +310,7 @@ int main()
         {
             refLeft = ref.l1;
         }
-        if (ref.r1 > maxRef)
+        if (ref.r1 > maxRef) //if reflectance sensor sees a larger number than 16000 then make it 16000
         {
             refRight = maxRef;
         }
@@ -313,23 +318,23 @@ int main()
         {
             refRight = ref.r1;
         }
-        errorLeft = maxRef - refLeft;
-        errorRight = maxRef - refRight;
+        errorLeft = maxRef - refLeft; //left sensor error is 16000 - "the value the left sensor sees"
+        errorRight = maxRef - refRight; //right sensor error is 16000 - "the value the right sensor sees"
         
-        if (refLeft < 5000 && refRight < 5000) //both of the middle sensors see white
+        if (refLeft < 5000 && refRight < 5000) //both of the middle sensors see under 5000 so we consider this as a situation where both of the sensor are on white
         {
-            if (lastSeenDirection == 1) //left was seen last
+            if (lastSeenDirection == 1) //right was the direction the black line was seen last
             {
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(0);
+                MotorDirLeft_Write(0); //left motor drive forwards
+                MotorDirRight_Write(0); //right motor drive forwards
                 PWM_WriteCompare1(0); //left motor speed (pwm 0-255)
                 PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
-                CyDelay(driveDelay); //drive this long
+                CyDelay(driveDelay); //drive with the previous settings for this long
             }
-            else //last seen right
+            else //last seen left
             {
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(0);
+                MotorDirLeft_Write(0); //left motor drive forwards
+                MotorDirRight_Write(0); //right motor drive forwards
                 PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
                 PWM_WriteCompare2(0); //right motor speed to (pwm 0-255)
                 CyDelay(driveDelay); //drive this long
@@ -339,38 +344,30 @@ int main()
         {
             if (refLeft == maxRef && refRight == maxRef) //both of the middle sensors are on black
             {
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(0);
+                MotorDirLeft_Write(0); //left motor drive forwards
+                MotorDirRight_Write(0); //right motor drive forwards
                 PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
                 PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
-                CyDelay(driveDelay);
+                CyDelay(driveDelay); //drive this long
             }
             else if (errorLeft < errorRight) //left sees black, right starts seeing white
             {
-                motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight);
+                motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight); //calculate the pd controller value
                 //motorSpeed maximum is 260000, we need to scale it to 0-255, motorSpeed is proportional to the actual motor speed
-                //motorSpeed/260000 = x/255 
-                //x = motorSpeed/260000*255
-                motorSpeed = motorSpeed/pwmScaler*maxSpeed;
-                motorSpeedInt = (int) motorSpeed;
-                if (motorSpeed > 255)
+                // motorSpeed/260000 = x/255 
+                // x = motorSpeed/260000*255
+                motorSpeed = motorSpeed/pwmScaler*maxSpeed; //scale the motor speed value to 0-255
+                motorSpeedInt = (int) motorSpeed; //cast motorspeed as int
+                if (motorSpeed > 255) //if motor speed is over 255 make it 255 (which is the max value)
                 {
                     motorSpeed = maxSpeed;
                 }
-                /*if (motorSpeedInt < 0)
-                {
-                    MotorDirLeft_Write(1); //left motor backwards
-                    MotorDirRight_Write(0); //right motor forward
-                    PWM_WriteCompare1(motorSpeedInt*(-1)); //left motor speed (pwm 0-255)
-                    PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
-                    CyDelay(driveDelay); //drive this long
-                }*/
                 MotorDirLeft_Write(0); 
                 MotorDirRight_Write(0);
                 PWM_WriteCompare1(maxSpeed-motorSpeedInt); //left motor speed (pwm 0-255)
                 PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
                 CyDelay(driveDelay); //drive this long
-                lastSeenDirection = 1;
+                lastSeenDirection = 1; 
             }
             else if (errorRight < errorLeft) //right sees black
             {
@@ -381,14 +378,6 @@ int main()
                 {
                     motorSpeed = maxSpeed;
                 }
-               /* if (motorSpeedInt < 0)
-                {
-                    MotorDirLeft_Write(0); //left motor forward
-                    MotorDirRight_Write(1); //right motor backwards
-                    PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
-                    PWM_WriteCompare2(motorSpeedInt*(-1)); //right motor speed to (pwm 0-255)
-                    CyDelay(driveDelay); //drive this long
-                }*/
                 MotorDirLeft_Write(0); 
                 MotorDirRight_Write(0);
                 PWM_WriteCompare1(maxSpeed); //left motor speed (pwm 0-255)
@@ -397,7 +386,7 @@ int main()
                 lastSeenDirection = 0;
             }
         }
-        lastErrorLeft = errorLeft;
+        lastErrorLeft = errorLeft; //previous error = current error
         lastErrorRight = errorRight;
         
         //calculate the amount of black lines seen
@@ -406,16 +395,16 @@ int main()
             timesSeenBlackLine++;
             lastSeenBlackLine = 1; //we are on top of a black line
         }
-        else if((ref.l3 < blackLineTreshold || ref.r3 < blackLineTreshold) && lastSeenBlackLine == 1)
+        else if((ref.l3 < blackLineTreshold || ref.r3 < blackLineTreshold) && lastSeenBlackLine == 1) //if moved away from over a black line
         {
             lastSeenBlackLine = 0; //we are not on top of a black line
         }
         
         if (timesSeenBlackLine == 3) //robot completed the route
         {
-            PWM_WriteCompare1(0);
+            PWM_WriteCompare1(0); //stop the motors
             PWM_WriteCompare2(0);
-            break; 
+            break; //break away from the main line following loop
         }
         
         //Battery + LED
@@ -429,7 +418,7 @@ int main()
             }
             timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
         }
-        if (volts < 4) //if battery is too low keep flashing the led
+        if (volts < 4) //if battery is too low flash the led
         {
             if (ledOn == 0) //if led is off, turn the led on
             {
