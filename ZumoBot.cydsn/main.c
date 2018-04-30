@@ -58,31 +58,36 @@ int rread(void);
 #if 1 //SUMO
 int main()
 {
-    struct sensors_ ref;
-    struct sensors_ dig;
+    struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
+    struct sensors_ dig; //all digital (0 or 1) values of the 6 reflectance sensors
     
     CyGlobalIntEnable; 
-    UART_1_Start();
-    Systick_Start();
-    IR_Start();
-    ADC_Battery_Start(); 
+    UART_1_Start(); //serial port communication
+    Systick_Start(); //start system timer
+    IR_Start(); //start infrared sensor
+    ADC_Battery_Start(); //start battery checking
     Ultra_Start(); // Ultra Sonic Start function
 
-    int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
-    int driveDelay = 2, maxSpeed = 255;
+    //battery variables
+    int time = 0; //time in seconds
+    int timesCheckedBattery = 1; //how many times the battery level has been checked
+    int ledOn = 0; //Is the battery led on? (0 = no, 1 = yes)
+    int16 adcresult = 0; //battery level from 0 to 4095
+    float volts = 5.0; //battery level in volts
+    
+    //motor variables
+    int driveDelay = 2; //how long are the motors driven for with 1 setting before new values are calculated
+    int maxSpeed = 255; //maximum speed for the motors
     
     //sumo variables
-    int distance = 0;
-    int random = 0;
+    int distance = 0; //ultra sonic sensor distance
+    int random = 0; //a random number
     
-    int16 adcresult = 0;
-    float volts = 5.0;
-  
-    reflectance_start();
-    CyDelay(20);
-    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set center sensor threshold to 11000 and others to 9000
+    reflectance_start(); //reflectance sensor start
+    CyDelay(20); //wait for 20 ms
+    reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set edge sensor thresholds to 9000 and others to 10000
     
-    printf("\nBEEP BOOP\n");
+    printf("\nBEEP BOOP\n"); //write something to show that boot happened
     BatteryLed_Write(0); // Switch led off 
     
     motor_start(); //start the motor
@@ -91,10 +96,10 @@ int main()
     
     for(;;) //first loop to drive until the first line is seen and then wait for infrared signal
     {
-        reflectance_read(&ref);
-        reflectance_digital(&dig);
-        motor_forward(50,driveDelay+8);
-        if(dig.l3 == 1 && dig.r3 == 1) //if left and right most reflectance sensors see black then break
+        reflectance_read(&ref); //update reflectance sensor values
+        reflectance_digital(&dig); //update refelectance sensor values depending on the threshold values (digital)
+        motor_forward(50,driveDelay+8); //Drive forwards for 10 ms with a speed of 50 (0-255)
+        if(dig.l3 == 1 && dig.r3 == 1) //if left and right most reflectance sensors see black (we are on a black line) then break
         {
             PWM_WriteCompare1(0); //set left motor speed to 0
             PWM_WriteCompare2(0); //set right motor speed to 
@@ -104,9 +109,9 @@ int main()
     
     IR_flush(); // clear IR receive buffer
     IR_wait(); // wait for IR command
-    motor_forward(maxSpeed,250);
+    motor_forward(maxSpeed,250); //Drive forwards for 250 ms with max speed.
     
-    for(;;)
+    for(;;) //second sumo ring main loop
     {
         reflectance_read(&ref);
         reflectance_digital(&dig);
