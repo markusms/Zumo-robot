@@ -54,7 +54,7 @@ int rread(void);
  * @details  ** Enable global interrupt since Zumo library uses interrupts. **<br>&nbsp;&nbsp;&nbsp;CyGlobalIntEnable;<br>
 */
 
-// !!!SUMO WRESTLING CODE!!!
+// !!!SUMO MODE CODE!!!
 #if 1
 //battery level//
 int main()
@@ -65,12 +65,13 @@ int main()
     CyGlobalIntEnable; 
     UART_1_Start();
     Systick_Start();
-    IR_Start();    
+    IR_Start();
+    Ultra_Start();
     ADC_Battery_Start();
     IR_flush(); // clear IR receive buffer
     reflectance_start();
     CyDelay(20);
-    reflectance_set_threshold(13275, 13275, 13275, 13275, 13275, 13275); // set center sensor threshold to 11000 and others to 9000
+    reflectance_set_threshold(13275, 13275, 13275, 13275, 13275, 13275); //set sensor thresholds to 13275
 
     int time = 0, timesCheckedBattery = 1, ledOn = 0; //battery variables
     int driveDelay = 5, maxSpeed = 255;
@@ -79,9 +80,53 @@ int main()
     PWM_WriteCompare2(0);
     printf("\nBEEP BOOP\n");
     
+    int distanceTreshold = 15;
     int distance = 0;
     int random = 0;
-   
+    int suunta =0;
+    int turnSpeed = 255;
+    int randomDelay = 10;
+    
+    
+    //testiohjelma sik-sak ajoon
+    /*
+    for(;;)
+    {
+         if (suunta == 0)
+            {
+                turnSpeed -= 4;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(turnSpeed);
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(10);
+                
+                if (turnSpeed < 10)
+                {
+                    suunta = 1;
+                    turnSpeed = 255;
+                }
+            
+            }
+            else if (suunta == 1)
+            {
+                turnSpeed -= 4;
+                MotorDirLeft_Write(1); 
+                MotorDirRight_Write(1);
+                PWM_WriteCompare1(maxSpeed);
+                PWM_WriteCompare2(turnSpeed);
+                CyDelay(10);
+                
+                if (turnSpeed < 10)
+                {
+                    suunta = 0;
+                    turnSpeed = 255;
+                }
+            
+            }
+    }
+    */
+    
     for(;;)
     {
         reflectance_read(&ref);
@@ -112,7 +157,7 @@ int main()
     MotorDirRight_Write(0);
     PWM_WriteCompare1(maxSpeed);
     PWM_WriteCompare2(maxSpeed);
-    CyDelay(1000);
+    CyDelay(500);
     
     for(;;)
     {
@@ -120,76 +165,157 @@ int main()
         reflectance_digital(&dig);
         distance = Ultra_GetDistance();
         srand(GetTicks());
-                  
+                 
         if (dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0) //if the leftmost sensor sees black
         {   
             MotorDirLeft_Write(1); 
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed); 
-            PWM_WriteCompare2(170);
-            CyDelay(500);
+            PWM_WriteCompare2(150);
+            random = rand() % 500;
             
-            random = rand() % 2;
-            
-            if (random == 0) {
-                random = rand() % 500;
-                MotorDirLeft_Write(1); 
-                MotorDirRight_Write(0);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
-            }
-            
-            if (random == 1) {
-                random = rand() % 500;
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(1);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
-            }
-   
-        }
-        else if(dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1) // if the rightmost sensor sees black
-        {   
-            MotorDirLeft_Write(1); 
-            MotorDirRight_Write(1);
-            PWM_WriteCompare1(170);
-            random = rand() % 600;
-            PWM_WriteCompare2(maxSpeed);
-            if (random < 300)
+            if (random < 200)
             {
-                random = 300;
+                random = 200;
             }
             CyDelay(random);
             
             random = rand() % 2;
             
-            if (random == 0) {
+            if (random == 0)
+            {
                 random = rand() % 500;
-                MotorDirLeft_Write(1); 
-                MotorDirRight_Write(0);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(1); 
+                    MotorDirRight_Write(0);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
             }
-            
-            if (random == 1) {
+
+            else
+            {
                 random = rand() % 500;
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(1);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
-            }
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(0); 
+                    MotorDirRight_Write(1);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();                    
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
+            }  
         }
-        else  if (dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1) //if any of the sensors see black
+        
+        else if(dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1) // if the rightmost sensor sees black
+        {   
+            MotorDirLeft_Write(1); 
+            MotorDirRight_Write(1);
+            PWM_WriteCompare1(150);           
+            PWM_WriteCompare2(maxSpeed);
+            random = rand() % 500;
+           
+            if (random < 200)
+            {
+                random = 200;
+            }
+            CyDelay(random);
+            
+            random = rand() % 2;
+            
+            if (random == 0)
+            {
+                random = rand() % 500;
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(1); 
+                    MotorDirRight_Write(0);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
+            }
+
+            else
+            {
+                random = rand() % 500;
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(0); 
+                    MotorDirRight_Write(1);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();                    
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
+            }                  
+        }
+        
+        else if (dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1) //if any of the sensors see black
         {
             MotorDirLeft_Write(1); 
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed); 
             PWM_WriteCompare2(maxSpeed);
             random = rand() % 500;
+            
             if (random < 200)
             {
                 random = 200;
@@ -200,40 +326,102 @@ int main()
             if (random == 0)
             {
                 random = rand() % 500;
-                MotorDirLeft_Write(1); 
-                MotorDirRight_Write(0);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(1); 
+                    MotorDirRight_Write(0);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
             }
+
             else
             {
                 random = rand() % 500;
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(1);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(random);
+                randomDelay = random/10;
+                
+                while (random > 0)
+                {
+                    MotorDirLeft_Write(0); 
+                    MotorDirRight_Write(1);
+                    PWM_WriteCompare1(maxSpeed); 
+                    PWM_WriteCompare2(maxSpeed);
+                    CyDelay(randomDelay);
+                    random -= randomDelay;
+                    distance = Ultra_GetDistance();                    
+                    
+                    if (distance < distanceTreshold)
+                    {
+                        MotorDirLeft_Write(0); 
+                        MotorDirRight_Write(0);
+                        PWM_WriteCompare1(maxSpeed); 
+                        PWM_WriteCompare2(maxSpeed);
+                        CyDelay(50);
+                        random = 0;
+                    }
+                }
             }           
         }
         
-        else if (distance < 10) //sees an opponent
-        {
-                MotorDirLeft_Write(0); 
-                MotorDirRight_Write(0);
-                PWM_WriteCompare1(maxSpeed); 
-                PWM_WriteCompare2(maxSpeed);
-                CyDelay(driveDelay);
+        else if (distance < distanceTreshold) //sees an opponent
+        {       
+            MotorDirLeft_Write(0); 
+            MotorDirRight_Write(0);
+            PWM_WriteCompare1(255); 
+            PWM_WriteCompare2(255);
+            CyDelay(driveDelay);
         }
+        
         
         else 
         {
-            MotorDirLeft_Write(0); 
-            MotorDirRight_Write(0);
-            PWM_WriteCompare1(maxSpeed);
-            PWM_WriteCompare2(maxSpeed);
-            CyDelay(10);
+            if (suunta == 0)
+            {
+                turnSpeed -= 4;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(turnSpeed);
+                PWM_WriteCompare2(maxSpeed);
+                CyDelay(10);
+                
+                if (turnSpeed < 10)
+                {
+                    suunta = 1;
+                    turnSpeed = 255;
+                }
             
+            }
+            else if (suunta == 1)
+            {
+                turnSpeed -= 4;
+                MotorDirLeft_Write(0); 
+                MotorDirRight_Write(0);
+                PWM_WriteCompare1(maxSpeed);
+                PWM_WriteCompare2(turnSpeed);
+                CyDelay(10);
+                
+                if (turnSpeed < 10)
+                {
+                    suunta = 0;
+                    turnSpeed = 255;
+                }
+            
+            }
         }
     }
     motor_stop();
@@ -281,7 +469,7 @@ int main()
 }
     
  
-//!!!END OF SUMO WRESTLING CODE!!!
+//!!!END OF SUMO MODE CODE!!!
 #endif
 #if 0
 //battery level//
