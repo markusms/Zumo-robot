@@ -55,7 +55,7 @@ int rread(void);
 */
 
 
-#if 0 //SUMO
+#if 1 //SUMO
 int main()
 {
     struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
@@ -98,6 +98,7 @@ int main()
     PWM_WriteCompare1(0); //set left motor speed to 0
     PWM_WriteCompare2(0); //set right motor speed to 0
     
+    
     for(;;) //first loop to drive until the first line is seen and then wait for infrared signal
     {
         reflectance_read(&ref); //update reflectance sensor values
@@ -134,19 +135,19 @@ int main()
         distance = Ultra_GetDistance(); //save ultra sensor distance value to distance variable
         srand(GetTicks()); //seed the random value generator depending on the current time
              
-        // if only the rightmost sensor sees black
+        // if only the leftmost sensor sees black
         if (dig.l3 == 1 && dig.l2 == 0 && dig.l1 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 0)
         {   
-            //drive backwards while turning away from the black line for random time between 200-500ms
+            //drive backwards while turning away from the black line for random time between 300-600ms
             MotorDirLeft_Write(1); 
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed); 
             PWM_WriteCompare2(150);
-            random = rand() % 501;
+            random = rand() % 601;
             
-            if (random < 200)
+            if (random < 300)
             {
-                random = 200;
+                random = 300;
             }
             CyDelay(random);
             
@@ -163,8 +164,8 @@ int main()
                 //Spin in place counterclockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning counterclockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen.
+                while (random > 10)
                 {
                     MotorDirLeft_Write(1); 
                     MotorDirRight_Write(0);
@@ -195,8 +196,8 @@ int main()
                 //Spin in place clockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning clockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen..
+                while (random > 10)
                 {
                     MotorDirLeft_Write(0); 
                     MotorDirRight_Write(1);
@@ -221,16 +222,16 @@ int main()
         // if only the rightmost sensor sees black
         else if(dig.l1 == 0 && dig.l2 == 0 && dig.l3 == 0 && dig.r1 == 0 && dig.r2 == 0 && dig.r3 == 1) 
         {   
-            //drive backwards while turning away from the black line for random time between 200-500ms
+            //drive backwards while turning away from the black line for random time between 300-600ms
             MotorDirLeft_Write(1); 
             MotorDirRight_Write(1);
             PWM_WriteCompare1(150);           
             PWM_WriteCompare2(maxSpeed);
-            random = rand() % 501;
+            random = rand() % 601;
            
-            if (random < 200)
+            if (random < 300)
             {
-                random = 200;
+                random = 300;
             }
             CyDelay(random);
             
@@ -247,8 +248,8 @@ int main()
                 //Spin in place counterclockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning counterclockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen.
+                while (random > 10)
                 {
                     MotorDirLeft_Write(1); 
                     MotorDirRight_Write(0);
@@ -280,8 +281,8 @@ int main()
                 //Spin in place clockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning clockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen.
+                while (random > 10)
                 {
                     MotorDirLeft_Write(0); 
                     MotorDirRight_Write(1);
@@ -333,8 +334,8 @@ int main()
                 //Spin in place counterclockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning counterclockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen.
+                while (random > 10)
                 {
                     MotorDirLeft_Write(1); 
                     MotorDirRight_Write(0);
@@ -366,8 +367,8 @@ int main()
                 //Spin in place clockwise for the time determined by randomDelay. Then check the distance from the ultrasonic sensor.
                 //If the distance read from ultrasonic sensor is less than the treshold determined earlier, drive forward with full speed
                 //in an effort to push the opponent out of the ring. If no enemy is seen, return to spinning clockwise. Spin ends when
-                //random reaches zero or enemy is seen.
-                while (random > 0)
+                //random is lower than 10 or enemy is seen.
+                while (random > 10)
                 {
                     MotorDirLeft_Write(0); 
                     MotorDirRight_Write(1);
@@ -401,7 +402,7 @@ int main()
         }
         
         //if no black line or enemies are seen, drive forward zig-zagging.
-        else 
+        else
         {   
             //reduce speed from the left engine
             if (direction == 0)
@@ -441,13 +442,48 @@ int main()
             
             }
         }
+            
+        //Battery + LED
+        time = GetTicks()/1000; //seconds
+        
+        if (time > (5*timesCheckedBattery)) //go here every 5 seconds
+        {
+            ADC_Battery_StartConvert();
+            
+            if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) // wait for get ADC converted value
+            {   
+                adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
+                volts = (float) adcresult/4095*5*1.5;
+            }
+            timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
+        }
+        if (volts < 4) //if battery is too low flash the led
+        {
+            if (ledOn == 0) //if led is off, turn the led on
+            {
+                BatteryLed_Write(1);
+                ledOn = 1;
+            }
+            else //if led is on turn the led off
+            {
+                BatteryLed_Write(0);
+                ledOn = 0;
+            }
+            CyDelay(10);
+        }
+        if (volts >= 4 && ledOn == 1) //if battery is back to over 4 and led was left on, turn it off
+        {
+            BatteryLed_Write(0);
+            ledOn = 0;
+        }
+    }
+    motor_stop();  //stop the motor
+    
 }
-        
-        
-}   
+         
 #endif
 
-#if 1 //PD LINE
+#if 0 //PD LINE
 int main()
 {
     struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
