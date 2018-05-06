@@ -55,7 +55,7 @@ int rread(void);
 */
 
 
-#if 1 //SUMO
+#if 0 //SUMO
 int main()
 {
     struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
@@ -83,9 +83,9 @@ int main()
     int distance = 0; //ultra sonic sensor distance
     int random = 0; //a random number
     int randomDelay = 10; //random delay
-    int distanceTreshold = 15;
-    int direction = 0; //direction
-    int turnSpeed = 255; //turning speed
+    int distanceTreshold = 15; //the range of ultra sonic sensor
+    int direction = 0; //direction left = 0, right = 1
+    int turnSpeed = 255; //turning speed 0-255
     
     reflectance_start(); //reflectance sensor start
     CyDelay(20); //wait for 20 ms
@@ -94,10 +94,9 @@ int main()
     printf("\nBEEP BOOP\n"); //write something to show that boot happened
     BatteryLed_Write(0); // Switch led off 
     
-    motor_start(); //start the motor
+    motor_start(); //start the motors
     PWM_WriteCompare1(0); //set left motor speed to 0
     PWM_WriteCompare2(0); //set right motor speed to 0
-    
     
     for(;;) //first loop to drive until the first line is seen and then wait for infrared signal
     {
@@ -108,16 +107,16 @@ int main()
         if (SW1_Read() == 0 && (dig.l3 == 1 || dig.l2 == 1 || dig.l1 == 1 || dig.r1 == 1 || dig.r2 == 1 || dig.r3 == 1))        
         {
             MotorDirLeft_Write(0); 
-            MotorDirRight_Write(0);
+            MotorDirRight_Write(0); 
             PWM_WriteCompare1(100); 
-            PWM_WriteCompare2(100);
+            PWM_WriteCompare2(100); 
         }
         //stop when all sensors see black and wait for infrared singal
         if (dig.l1 == 1 && dig.l2 == 1 && dig.l3 == 1 && dig.r1 == 1 && dig.r2 == 1 && dig.r3 == 1)
         {       
             PWM_WriteCompare1(0); 
             PWM_WriteCompare2(0);
-            IR_wait();
+            IR_wait(); 
             break;
         }
     }
@@ -143,9 +142,9 @@ int main()
             MotorDirRight_Write(1);
             PWM_WriteCompare1(maxSpeed); 
             PWM_WriteCompare2(150);
-            random = rand() % 601;
+            random = rand() % 601; //random number between 0 and 600
             
-            if (random < 300)
+            if (random < 300) //minimum number for random
             {
                 random = 300;
             }
@@ -420,7 +419,6 @@ int main()
                     direction = 1;
                     turnSpeed = 255;
                 }
-            
             }
             
             //reduce speed from the right engine
@@ -439,21 +437,20 @@ int main()
                     direction = 0;
                     turnSpeed = 255;
                 }
-            
             }
         }
             
         //Battery + LED
         time = GetTicks()/1000; //seconds
         
-        if (time > (5*timesCheckedBattery)) //go here every 5 seconds
+        if (time > (60*timesCheckedBattery)) //go here every 60 seconds
         {
             ADC_Battery_StartConvert();
             
             if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) // wait for get ADC converted value
             {   
                 adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
-                volts = (float) adcresult/4095*5*1.5;
+                volts = (float) adcresult/4095*5*1.5; //scale the ADC result value from 0-4095 to 0-5V and multiply it by 1.5 to take into account the voltage reduction in the microcontroller
             }
             timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
         }
@@ -483,7 +480,7 @@ int main()
          
 #endif
 
-#if 0 //PD LINE
+#if 1 //PD LINE
 int main()
 {
     struct sensors_ ref; //struct to save all the uint16_t values of all the 6 reflectance sensor
@@ -506,13 +503,13 @@ int main()
     //motor variables
     int driveDelay = 2; //how long are the motors driven for with 1 setting before new values are calculated
     int maxSpeed = 255; //maximum speed for the motors
-    int lastSeenDirection = 0; //last seen direction of the line (0 = left, 1 = right)
+    int lastSeenDirection = 0; //last seen direction of the line (1 = left, 0 = right)
     int timesSeenBlackLine = 0; //how many times has a black line been seen (save to stop at the 3rd line)
     int lastSeenBlackLine = 0; //if this is 1 then we saw a black line during the last check so we do not count another black line because we are still on top of the same one we just added
     int blackLineTreshold = 10000; //black line counter treshold for the sensors
     
     //PD controller variables
-    int Kp = 20, Kd = 40; //Kp and Kd variables
+    int Kp = 20, Kd = 80; //Kp and Kd variables
     int errorLeft = 0, errorRight = 0; //Proportional error for the left most center reflectance sensor and the right most reflectance sensor
     int lastErrorLeft = 0, lastErrorRight = 0; //The previous error left and right
     double motorSpeed = 0; //PD controller chosen motor speed (double)
@@ -525,7 +522,7 @@ int main()
     CyDelay(20); //wait for 20 ms
     reflectance_set_threshold(9000, 10000, 10000, 10000, 10000, 9000); // set edge sensor thresholds to 9000 and others to 10000
     
-    printf("\nBEEP BOOP\n");//write something to show that boot happened
+    printf("\nBEEP BOOP\n"); //write something to show that boot happened
     BatteryLed_Write(0); // Switch led off 
     
     motor_start(); //start the motor
@@ -536,7 +533,7 @@ int main()
     {
         reflectance_read(&ref); //update reflectance sensor values
         motor_forward(100,driveDelay); //Drive forwards for driveDelay ms with a speed of 100 (0-255)
-        if(ref.l3 > blackLineTreshold && ref.r3 > blackLineTreshold) //if left and right most reflectance sensors see black then break
+        if(ref.l3 > blackLineTreshold && ref.r3 > blackLineTreshold) //if left and right most reflectance sensors see black then break (we see a line)
         {
             PWM_WriteCompare1(0); //set left motor speed to 0
             PWM_WriteCompare2(0); //set right motor speed to 0
@@ -566,6 +563,7 @@ int main()
         counter++; //print reading counter +1
         
         //PID controller (PD controller)
+		//We only use the 2 reflectance sensors in the middle
         if (ref.l1 > maxRef) //if reflectance sensor sees a larger number than 16000 then make it 16000
         {
            refLeft = maxRef;
@@ -587,7 +585,7 @@ int main()
         
         if (refLeft < 5000 && refRight < 5000) //both of the middle sensors see under 5000 so we consider this as a situation where both of the sensor are on white
         {
-            if (lastSeenDirection == 1) //right was the direction the black line was seen last
+            if (lastSeenDirection == 1) //left  was the direction the black line was seen last
             {
                 MotorDirLeft_Write(0); //left motor drive forwards
                 MotorDirRight_Write(0); //right motor drive forwards
@@ -595,7 +593,7 @@ int main()
                 PWM_WriteCompare2(maxSpeed); //right motor speed to (pwm 0-255)
                 CyDelay(driveDelay); //drive with the previous settings for this long
             }
-            else //last seen left
+            else //last seen right
             {
                 MotorDirLeft_Write(0); //left motor drive forwards
                 MotorDirRight_Write(0); //right motor drive forwards
@@ -618,8 +616,8 @@ int main()
             {
                 motorSpeed = Kp*errorRight+Kd*(errorRight-lastErrorRight); //calculate the pd controller value
                 //motorSpeed maximum is 260000, we need to scale it to 0-255, motorSpeed is proportional to the actual motor speed
-                // motorSpeed/260000 = x/255 
-                // x = motorSpeed/260000*255
+                //motorSpeed/260000 = x/255 
+                //x = motorSpeed/260000*255
                 motorSpeed = motorSpeed/pwmScaler*maxSpeed; //scale the motor speed value to 0-255
                 motorSpeedInt = (int) motorSpeed; //cast motorspeed as int
                 if (motorSpeed > 255) //if motor speed is over 255 make it 255 (which is the max value)
@@ -654,7 +652,7 @@ int main()
         lastErrorRight = errorRight;
         
         //calculate the amount of black lines seen
-        if(ref.l3 > blackLineTreshold && ref.r3 > blackLineTreshold && lastSeenBlackLine == 0) //if the left and right most reflectance sensors see black then blacklinecounter++
+        if(ref.l3 > blackLineTreshold && ref.r3 > blackLineTreshold && lastSeenBlackLine == 0) //if the left and right most reflectance sensors see black and we weren't on top of a black line the last time we checked then blacklinecounter++
         {
             timesSeenBlackLine++;
             lastSeenBlackLine = 1; //we are on top of a black line
@@ -678,7 +676,7 @@ int main()
             ADC_Battery_StartConvert();
             if(ADC_Battery_IsEndConversion(ADC_Battery_WAIT_FOR_RESULT)) {   // wait for get ADC converted value
                 adcresult = ADC_Battery_GetResult16(); // get the ADC value (0 - 4095)
-                volts = (float) adcresult/4095*5*1.5;
+                volts = (float) adcresult/4095*5*1.5; //scale the ADC result value from 0-4095 to 0-5V and multiply it by 1.5 to take into account the voltage reduction in the microcontroller
             }
             timesCheckedBattery++; //variable that tells how many times the battery has been checked. Used for checking the battery every 5 seconds.
         }
@@ -702,10 +700,11 @@ int main()
             ledOn = 0;
         }
     }
-    motor_stop();  //stop the motor
+    motor_stop();  //stop the motors
 }   
 #endif
 
+//Line following with PD and if-else hybrid. Also has the old if-else logic in it but commented out.
 #if 0
 int main()
 {
@@ -1148,6 +1147,10 @@ int main()
     motor_stop();  //stop the motor
  }   
 #endif
+
+
+
+ //examples after this line
 
 #if 0
 // button
